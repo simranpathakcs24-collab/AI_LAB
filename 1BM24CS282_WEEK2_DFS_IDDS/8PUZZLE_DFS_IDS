@@ -1,0 +1,123 @@
+import collections
+
+# Define the goal state globally
+GOAL_STATE = (1, 2, 3, 4, 5, 6, 7, 8, 0)
+
+def print_grid(state, step=None, depth=None):
+    """Helper function to print the 3x3 grid beautifully."""
+    prefix = ""
+    if step is not None:
+        prefix = f"Step {step}: "
+    if depth is not None:
+        prefix += f"(Depth {depth})"
+    
+    print(f"{prefix}State: {state}")
+    for i in range(0, 9, 3):
+        print(f"  [ {state[i]} {state[i+1]} {state[i+2]} ]")
+    print("-" * 20)
+
+# Helper function to find valid moves and generate neighbor states
+def get_valid_neighbors(state):
+    neighbors = []
+    blank_idx = state.index(0)
+    row, col = blank_idx // 3, blank_idx % 3
+    
+    # Possible directional moves for the blank tile (row_offset, col_offset)
+    moves = {'UP': (-1, 0), 'DOWN': (1, 0), 'LEFT': (0, -1), 'RIGHT': (0, 1)}
+    for move, (dr, dc) in moves.items():
+        new_row, new_col = row + dr, col + dc
+        # Check boundary constraints for a 3x3 grid
+        if 0 <= new_row < 3 and 0 <= new_col < 3:
+            new_blank_idx = new_row * 3 + new_col
+            # Swap the blank space with the target tile
+            state_list = list(state)
+            state_list[blank_idx], state_list[new_blank_idx] = state_list[new_blank_idx], state_list[blank_idx]
+            neighbors.append(tuple(state_list))
+    return neighbors
+
+# 1. Depth-First Search (DFS) Implementation
+def depth_first_search(initial_state):
+    open_stack = [initial_state]
+    visited = set()
+    step_count = 0
+    
+    print("\n--- Starting DFS Iterations ---")
+    while open_stack:
+        current_state = open_stack.pop()
+        step_count += 1
+        
+        # Print the current step
+        print_grid(current_state, step=step_count)
+        
+        if current_state == GOAL_STATE:
+            return f"SUCCESS in {step_count} steps"
+            
+        if current_state not in visited:
+            visited.add(current_state)
+            # Generate neighbors and push them onto the stack
+            for neighbor in get_valid_neighbors(current_state):
+                if neighbor not in visited:
+                    open_stack.append(neighbor)
+                    
+        # Safety cutoff for demonstration to avoid terminal flooding
+        if step_count >= 50:
+            print("...Truncated to prevent infinite text scrolling...")
+            return "CUTOFF (Max demonstration steps reached)"
+            
+    return "FAILURE"
+
+# 2. Iterative Deepening DFS (IDDFS) Implementation
+def iterative_deepening_dfs(initial_state):
+    depth_limit = 0
+    global global_step_count
+    global_step_count = 0
+    
+    print("\n--- Starting IDDFS Iterations ---")
+    while True:
+        print(f"\n================ LAUNCHING DEPTH LIMIT: {depth_limit} ================")
+        path_visited = set()
+        result = depth_limited_search(initial_state, depth_limit, path_visited, current_depth=0)
+        
+        if result == "SUCCESS":
+            return f"SUCCESS at depth {depth_limit} (Total node evaluations: {global_step_count})"
+        elif result == "FAILURE":
+            return "FAILURE (No solution exists)"
+        
+        depth_limit += 1
+
+def depth_limited_search(state, limit, path_visited, current_depth):
+    global global_step_count
+    global_step_count += 1
+    
+    # Print the current step and current depth level
+    print_grid(state, step=global_step_count, depth=current_depth)
+    
+    if state == GOAL_STATE:
+        return "SUCCESS"
+    elif limit == 0:
+        return "CUTOFF"
+        
+    any_cutoff_occurred = False
+    path_visited.add(state)
+    
+    for neighbor in get_valid_neighbors(state):
+        if neighbor not in path_visited:
+            result = depth_limited_search(neighbor, limit - 1, path_visited, current_depth + 1)
+
+            if result == "SUCCESS":
+                return "SUCCESS"
+            elif result == "CUTOFF":
+                any_cutoff_occurred = True
+                
+    path_visited.remove(state) # Backtrack
+    
+    if any_cutoff_occurred:
+        return "CUTOFF"
+    else:
+        return "FAILURE"
+
+# Test Execution
+easy_start = (1, 2, 3, 4, 5, 0, 7, 8, 6)
+
+print("IDDFS Result:", iterative_deepening_dfs(easy_start))
+print("DFS Result:", depth_first_search(easy_start))
